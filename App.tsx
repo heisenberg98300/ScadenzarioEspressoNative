@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -163,7 +164,14 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
-        <Text style={styles.headerTitle}>☕ Scadenzario Espresso</Text>
+        {/* <Text style={styles.headerTitle}>☕ Scadenzario Espresso</Text> */}
+        <View style={styles.headerContainer}>
+        <Image 
+          source={require('./assets/icon.png')} // Sostituisci con il percorso corretto della tua immagine
+          style={styles.headerIcon} 
+        />
+        <Text style={styles.headerTitle}>Scadenzario Espresso</Text>
+      </View>
 
         <View style={styles.inputContainer}>
           <TextInput
@@ -309,4 +317,28 @@ const styles = StyleSheet.create({
     marginTop: 30,
     fontSize: 15,
   },
+
+
+
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 16,
+  },
+  headerIcon: {
+    width: 28,
+    height: 28,
+    marginRight: 8,
+    resizeMode: 'contain',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+
+
+
+
 });
