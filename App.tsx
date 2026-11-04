@@ -11,6 +11,7 @@ import {
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
+import { calcolaGiorniMancanti } from './utils/dateUtils';
 
 // Definizione del tipo per gli elementi della lista
 type ExpiryItem = {
@@ -22,7 +23,13 @@ type ExpiryItem = {
 export default function App() {
   const [items, setItems] = useState<ExpiryItem[]>([]);
   const [title, setTitle] = useState<string>('');
-  const [days, setDays] = useState<string>('7');
+  //const [days, setDays] = useState<string>('7');
+
+  // Sostituito 'days' con la data precompilata a oggi (o vuota) nel formato AAAA-MM-DD
+  const [expiryDateInput, setExpiryDateInput] = useState<string>(
+    dayjs().format('YYYY-MM-DD')
+  );
+
 
   useEffect(() => {
     loadItems();
@@ -51,24 +58,66 @@ export default function App() {
     }
   };
 
+  // const addItem = () => {
+  //   if (!title.trim()) {
+  //     Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
+  //     return;
+  //   }
+
+  //   const numDays = parseInt(expiryDateInput, 10) || 0;
+  //   const calculatedDate = dayjs().add(numDays, 'day').format('YYYY-MM-DD');
+
+  //   const newItem: ExpiryItem = {
+  //     id: Date.now().toString(),
+  //     title: title.trim(),
+  //     expiryDate: calculatedDate,
+  //   };
+
+  //   setItems([...items, newItem]);
+  //   setTitle('');
+  // };
+
+
   const addItem = () => {
     if (!title.trim()) {
       Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
       return;
     }
-
-    const numDays = parseInt(days, 10) || 0;
-    const calculatedDate = dayjs().add(numDays, 'day').format('YYYY-MM-DD');
+    if (!expiryDateInput.trim()) {
+      Alert.alert('Attenzione', 'Inserisci una data di scadenza valida');
+      return;
+    }
 
     const newItem: ExpiryItem = {
       id: Date.now().toString(),
       title: title.trim(),
-      expiryDate: calculatedDate,
+      expiryDate: expiryDateInput.trim(), // Salviamo direttamente la data inserita
     };
 
     setItems([...items, newItem]);
     setTitle('');
   };
+
+  // const removeItem = (id: string) => {
+  //   const updated = items.filter((item) => item.id !== id);
+  //   setItems(updated);
+  // };
+
+  // const renderItem = ({ item }: { item: ExpiryItem }) => {
+  //   const today = dayjs().startOf('day');
+  //   const expiry = dayjs(item.expiryDate).startOf('day');
+  //   const diffDays = expiry.diff(today, 'day');
+
+  //   let badgeColor = '#4CAF50';
+  //   let statusText = `Scade tra ${diffDays} gg`;
+
+  //   if (diffDays < 0) {
+  //     badgeColor = '#F44336';
+  //     statusText = 'SCADUTO!';
+  //   } else if (diffDays <= 3) {
+  //     badgeColor = '#FF9800';
+  //   }
+
 
   const removeItem = (id: string) => {
     const updated = items.filter((item) => item.id !== id);
@@ -80,16 +129,17 @@ export default function App() {
     const expiry = dayjs(item.expiryDate).startOf('day');
     const diffDays = expiry.diff(today, 'day');
 
-    let badgeColor = '#4CAF50';
-    let statusText = `Scade tra ${diffDays} gg`;
-
+    // Gestione del colore del badge in base alla vicinanza della scadenza
+    let badgeColor = '#4CAF50'; // Verde
     if (diffDays < 0) {
-      badgeColor = '#F44336';
-      statusText = 'SCADUTO!';
+      badgeColor = '#F44336'; // Rosso (Scaduto)
     } else if (diffDays <= 3) {
-      badgeColor = '#FF9800';
+      badgeColor = '#FF9800'; // Arancione (In scadenza)
     }
 
+    // Sfruttiamo la funzione esterna per il testo del badge
+    const statusText = calcolaGiorniMancanti(item.expiryDate);
+    
     return (
       <View style={styles.card}>
         <View style={styles.cardInfo}>
@@ -123,13 +173,13 @@ export default function App() {
             value={title}
             onChangeText={setTitle}
           />
+          {/* Input allargato per inserire la data esatta AAAA-MM-DD */}
           <TextInput
-            style={styles.inputDays}
-            placeholder="GG"
+            style={styles.inputDate}
+            placeholder="AAAA-MM-DD"
             placeholderTextColor="#888"
-            keyboardType="numeric"
-            value={days}
-            onChangeText={setDays}
+            value={expiryDateInput}
+            onChangeText={setExpiryDateInput}
           />
           <TouchableOpacity style={styles.addBtn} onPress={addItem}>
             <Text style={styles.addBtnText}>+</Text>
@@ -177,18 +227,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDD',
     marginRight: 8,
+    color: '#000',
   },
-  inputDays: {
-    width: 60,
+  inputDate: {
+    width: 120, // Allargato per contenere la data formattata
     backgroundColor: '#FFF',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     height: 48,
-    fontSize: 16,
+    fontSize: 14,
     borderWidth: 1,
     borderColor: '#DDD',
     marginRight: 8,
     textAlign: 'center',
+    color: '#000',
   },
   addBtn: {
     backgroundColor: '#007AFF',
