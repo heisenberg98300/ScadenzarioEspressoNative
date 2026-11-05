@@ -110,7 +110,7 @@ export default function App() {
     setLoading(true);
     try {
       console.log('Avvio fetch di test...');
-      const response = await fetch('https://fldrcsyvvdkawdvsiqb.supabase.co/rest/v1/scadenze?select=*', {
+      const response = await fetch('https://fldrcsyvvdkawdvhsiqb.supabase.co/rest/v1/scadenze?select=*', {
         method: 'GET',
         headers: {
           'apikey': 'sb_publishable_LtXa3VE1s305Rk8Shv5S0g_JGne27MZ',
