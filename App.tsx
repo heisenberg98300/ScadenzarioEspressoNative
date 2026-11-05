@@ -15,6 +15,7 @@ import dayjs from 'dayjs';
 import { calcolaGiorniMancanti } from './utils/dateUtils';
 import { Colors }from './utils/theme';
 import ThemeToggleButton from './components/ThemeToggleButton';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Definizione del tipo per gli elementi della lista
 type ExpiryItem = {
@@ -47,8 +48,9 @@ export default function App() {
 
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
-  setShowDatePicker(false); // Chiude il calendario dopo la scelta
-  if (selectedDate) {
+  setShowDatePicker(false); // Chiude sempre il selettore
+
+  if (event.type === 'set' && selectedDate) {
     setDate(selectedDate);
   }
 };
