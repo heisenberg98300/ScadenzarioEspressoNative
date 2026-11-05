@@ -15,93 +15,76 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
 import { calcolaGiorniMancanti } from './utils/dateUtils';
-import { Colors }from './utils/theme';
+import { Colors } from './utils/theme';
 import ThemeToggleButton from './components/ThemeToggleButton';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from './utils/supabase';
+import LoginScreen from './components/LoginScreen';
 
-// Definizione del tipo per gli elementi della lista
 type ExpiryItem = {
   id: string;
   title: string;
   expiry_date: string;
+  id_utente?: string;
 };
 
 export default function App() {
-
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [usernameInput, setUsernameInput] = useState<string>('');
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [items, setItems] = useState<ExpiryItem[]>([]);
   const [title, setTitle] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const theme = isDarkMode ? Colors.dark : Colors.light;
-  // Sostituito 'days' con la data precompilata a oggi (o vuota) nel formato AAAA-MM-DD
-  // const [expiryDateInput, setExpiryDateInput] = useState<string>(
-  //   dayjs().format('YYYY-MM-DD')
-  // );
+
   const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
-
   useEffect(() => {
-    loadItems();
+    loadUserPreference();
     loadThemePreference();
   }, []);
 
-  useEffect(() => {
-    saveItems(items);
-  }, [items]);
-
-
-
-  useEffect(() => {
-  loadUserPreference();
-  loadThemePreference();
-}, []);
-
-const loadUserPreference = async () => {
-  try {
-    const savedUser = await AsyncStorage.getItem('@current_user');
-    if (savedUser) {
-      setCurrentUser(savedUser);
-      loadItems(savedUser);
-    } else {
+  const loadUserPreference = async () => {
+    try {
+      const savedName = await AsyncStorage.getItem('@current_user_name');
+      const savedId = await AsyncStorage.getItem('@current_user_id');
+      if (savedName && savedId) {
+        setCurrentUserName(savedName);
+        setCurrentUserId(savedId);
+        loadItems(savedId);
+      } else {
+        setLoading(false);
+      }
+    } catch (e) {
+      console.log('Errore caricamento utente', e);
       setLoading(false);
     }
-  } catch (e) {
-    console.log('Errore caricamento utente', e);
-    setLoading(false);
-  }
-};
+  };
 
-const handleLogin = async () => {
-  if (!usernameInput.trim()) {
-    Alert.alert('Attenzione', 'Inserisci un nome utente valido');
-    return;
-  }
-  const user = usernameInput.trim();
-  setCurrentUser(user);
-  await AsyncStorage.setItem('@current_user', user);
-  loadItems(user);
-};
+  const handleLoginSuccess = async (userName: string, userId: string) => {
+    setCurrentUserName(userName);
+    setCurrentUserId(userId);
+    await AsyncStorage.setItem('@current_user_name', userName);
+    await AsyncStorage.setItem('@current_user_id', userId);
+    loadItems(userId);
+  };
 
-const handleLogout = async () => {
-  setCurrentUser(null);
-  setItems([]);
-  await AsyncStorage.removeItem('@current_user');
-};
+  const handleLogout = async () => {
+    setCurrentUserName(null);
+    setCurrentUserId(null);
+    setItems([]);
+    await AsyncStorage.removeItem('@current_user_name');
+    await AsyncStorage.removeItem('@current_user_id');
+  };
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
-  setShowDatePicker(false); // Chiude sempre il selettore
-
-  if (event.type === 'set' && selectedDate) {
-    setDate(selectedDate);
-  }
-};
-
-
+    setShowDatePicker(false);
+    if (event.type === 'set' && selectedDate) {
+      setDate(selectedDate);
+    }
+  };
 
   const toggleTheme = async (value: boolean) => {
     setIsDarkMode(value);
@@ -123,161 +106,95 @@ const handleLogout = async () => {
     }
   };
 
-
-
-//   const loadItems = async () => {
-//   setLoading(true);
-//   try {
-//     const { data, error } = await supabase.from('scadenze').select('*');
-//     if (error) throw error;
-//     if (data) {
-//       setItems(data); // Aggiorna la lista nell'interfaccia
-//     }
-//   } catch (e: any) {
-//     Alert.alert('Errore', e.message);
-//   } finally {
-//     setLoading(false);
-//   }
-// };
-
-
-const loadItems = async (user: string) => {
-  setLoading(true);
-  try {
-    const { data, error } = await supabase
-      .from('scadenze')
-      .select('*')
-      .eq('id_utente', user) // Filtra per utente
-      .order('expiry_date', { ascending: true });
-
-    if (error) throw error;
-    
-    if (data) {
-      const formattedData = data.map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        expiry_date: item.expiry_date,
-        id_utente: item.id_utente,
-      }));
-      setItems(formattedData);
-    }
-  } catch (e: any) {
-    Alert.alert('Errore', e.message);
-  } finally {
-    setLoading(false);
-  }
-};
-  const saveItems = async (data: ExpiryItem[]) => {
+  const loadItems = async (userId: string) => {
+    setLoading(true);
     try {
-      await AsyncStorage.setItem('@scadenze_list', JSON.stringify(data));
-    } catch (e) {
-      console.log('Errore salvataggio dati', e);
+      const { data, error } = await supabase
+        .from('scadenze')
+        .select('*')
+        .eq('id_utente', userId) // Filtra usando la chiave esterna numerica
+        .order('expiry_date', { ascending: true });
+
+      if (error) throw error;
+      
+      if (data) {
+        const formattedData = data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          expiry_date: item.expiry_date,
+          id_utente: item.id_utente,
+        }));
+        setItems(formattedData);
+      }
+    } catch (e: any) {
+      Alert.alert('Errore', e.message);
+    } finally {
+      setLoading(false);
     }
   };
-
-  
-
-
-
-//   const addItem = async () => {
-//   if (!title.trim()) {
-//     Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
-//     return;
-//   }
-
-//   const newId = Date.now().toString();
-//   const formattedDate = dayjs(date).format('YYYY-MM-DD');
-
-//   const newItem: ExpiryItem = {
-//     id: newId,
-//     title: title.trim(),
-//     expiry_date: formattedDate,
-//   };
-
-//   // Inserimento nel database Supabase
-//   console.log('Tentativo di connessione a Supabase in corso...');
-//   const { data, error } = await supabase.from('scadenze').insert([
-//     {
-//       id: newId,
-//       title: newItem.title,
-//       expiry_date: newItem.expiry_date,
-//     },
-//   ]);
-
-//   if (error) {
-//     console.log('ERRORE DETTAGLIATO SUPABASE:', JSON.stringify(error, null, 2));
-//     Alert.alert('Errore Tecnico', `Codice: ${error.code}\nMessaggio: ${error.message}\nDettagli: ${error.details}`);
-//     return;
-//   }
-
-//   console.log('Inserito con successo!', data);
-//   setItems([...items, newItem]);
-//   setTitle('');
-// };
 
   const addItem = async () => {
-  if (!title.trim()) {
-    Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
-    return;
-  }
-  if (!currentUser) return;
+    if (!title.trim()) {
+      Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
+      return;
+    }
+    if (!currentUserId) return;
 
-  const newId = Date.now().toString();
-  const formattedDate = dayjs(date).format('YYYY-MM-DD');
+    const newId = Date.now().toString();
+    const formattedDate = dayjs(date).format('YYYY-MM-DD');
 
-  const newItem: ExpiryItem = {
-    id: newId,
-    title: title.trim(),
-    expiry_date: formattedDate,
+    const newItem: ExpiryItem = {
+      id: newId,
+      title: title.trim(),
+      expiry_date: formattedDate,
+      id_utente: currentUserId,
+    };
+
+    const { error } = await supabase.from('scadenze').insert([
+      {
+        id: newId,
+        title: newItem.title,
+        expiry_date: newItem.expiry_date,
+        id_utente: currentUserId, // Associa l'ID numerico dell'utente
+      },
+    ]);
+
+    if (error) {
+      Alert.alert('Errore', 'Impossibile salvare online: ' + error.message);
+      return;
+    }
+
+    setItems([...items, newItem]);
+    setTitle('');
   };
 
-  const { error } = await supabase.from('scadenze').insert([
-    {
-      id: newId,
-      title: newItem.title,
-      expiry_date: newItem.expiry_date,
-      id_utente: currentUser, // Associa all'utente loggato
-    },
-  ]);
-
-  if (error) {
-    Alert.alert('Errore', 'Impossibile salvare online: ' + error.message);
-    return;
-  }
-
-  setItems([...items, newItem]);
-  setTitle('');
-};
-
   const removeItem = async (id: string) => {
-  const { error } = await supabase
-    .from('scadenze')
-    .delete()
-    .eq('id', id);
+    const { error } = await supabase
+      .from('scadenze')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    Alert.alert('Errore', 'Impossibile eliminare dal cloud');
-    return;
-  }
+    if (error) {
+      Alert.alert('Errore', 'Impossibile eliminare dal cloud');
+      return;
+    }
 
-  const updated = items.filter((item) => item.id !== id);
-  setItems(updated);
-};
+    const updated = items.filter((item) => item.id !== id);
+    setItems(updated);
+  };
 
   const renderItem = ({ item }: { item: ExpiryItem }) => {
     const today = dayjs().startOf('day');
     const expiry = dayjs(item.expiry_date).startOf('day');
     const diffDays = expiry.diff(today, 'day');
 
-    // Gestione del colore del badge in base alla vicinanza della scadenza
-    let badgeColor = '#4CAF50'; // Verde
+    let badgeColor = '#4CAF50';
     if (diffDays < 0) {
-      badgeColor = '#F44336'; // Rosso (Scaduto)
+      badgeColor = '#F44336';
     } else if (diffDays <= 3) {
-      badgeColor = '#FF9800'; // Arancione (In scadenza)
+      badgeColor = '#FF9800';
     }
 
-    // Sfruttiamo la funzione esterna per il testo del badge
     const statusText = calcolaGiorniMancanti(item.expiry_date);
     
     return (
@@ -298,43 +215,23 @@ const loadItems = async (user: string) => {
     );
   };
 
-
-
-  // Se l'utente non ha inserito il nome, mostra la schermata di login
-  if (!currentUser) {
-    return (
-      <SafeAreaProvider>
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={[styles.headerTitle, { color: theme.textMain, marginBottom: 20 }]}>Scadenzario Espresso</Text>
-          <Text style={{ color: theme.textSecondary, marginBottom: 10 }}>Inserisci il tuo nome per accedere:</Text>
-          <TextInput
-            style={[styles.inputTitle, { width: '80%', marginBottom: 16, backgroundColor: theme.cardBackground, color: theme.textMain, borderColor: theme.inputBorder }]}
-            placeholder="Il tuo nome..."
-            placeholderTextColor="#888"
-            value={usernameInput}
-            onChangeText={setUsernameInput}
-          />
-          <TouchableOpacity style={[styles.addBtn, { width: '80%', height: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }]} onPress={handleLogin}>
-            <Text style={styles.addBtnText}>Accedi</Text>
-          </TouchableOpacity>
-        </SafeAreaView>
-      </SafeAreaProvider>
-    );
+  // Se l'utente non è loggato, mostra il componente LoginScreen separato
+  if (!currentUserName || !currentUserId) {
+    return <LoginScreen theme={theme} onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Schermata principale (Dashboard con utente loggato)
+  // Schermata principale (Dashboard)
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         
-        {/* Nuovo Header con info utente e tasto cambia */}
         <View style={styles.headerContainer}>
           <View style={styles.titleContainer}>
             <Image source={require('./assets/icon.png')} style={styles.headerIcon} />
             <View>
               <Text style={[styles.headerTitle, { color: theme.textMain }]}>Scadenzario</Text>
               <Text style={{ fontSize: 12, color: theme.textSecondary }}>
-                Utente: {currentUser} (<Text style={{color: '#007AFF'}} onPress={handleLogout}>cambia</Text>)
+                Utente: {currentUserName} (<Text style={{color: '#007AFF'}} onPress={handleLogout}>cambia</Text>)
               </Text>
             </View>
           </View>
@@ -396,79 +293,6 @@ const loadItems = async (user: string) => {
   );
 }
 
-  // return (
-  //   <SafeAreaProvider>
-  //     {/* 3. Applichiamo lo sfondo dinamico del tema */}
-  //     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        
-  //       {/* Header con titolo, icona e il pulsante per il cambio tema */}
-  //       <View style={styles.headerContainer}>
-  //         <View style={styles.titleContainer}>
-  //           <Image source={require('./assets/icon.png')} style={styles.headerIcon} />
-  //           <Text style={[styles.headerTitle, { color: theme.textMain }]}>Scadenzario Espresso</Text>
-  //         </View>
-
-          
-  //         <ThemeToggleButton
-  //           isDarkMode={isDarkMode}
-  //           onToggle={() => toggleTheme(!isDarkMode)} // Inverte lo stato e lo salva
-  //         />
-  //       </View>
-
-  //       <View style={styles.inputContainer}>
-  //         <TextInput
-  //           style={[styles.inputTitle, { backgroundColor: theme.cardBackground, color: theme.textMain, borderColor: theme.inputBorder }]}
-  //           placeholder="Nome prodotto (es. Latte)"
-  //           placeholderTextColor={isDarkMode ? '#888' : '#aaa'}
-  //           value={title}
-  //           onChangeText={setTitle}
-  //         />
-          
-  //         {/* Pulsante che apre il calendario al posto del TextInput */}
-  //         <TouchableOpacity 
-  //           style={[styles.datePickerBtn, { backgroundColor: theme.cardBackground, borderColor: theme.inputBorder }]}
-  //           onPress={() => setShowDatePicker(true)}
-  //         >
-  //           <Text style={{ color: theme.textMain }}>
-  //             {dayjs(date).format('YYYY-MM-DD')}
-  //           </Text>
-  //         </TouchableOpacity>
-
-  //         {/* Componente del calendario nativo a comparsa */}
-  //         {showDatePicker && (
-  //           <DateTimePicker
-  //             value={date}
-  //             mode="date"
-  //             display="default"
-  //             onChange={onChangeDate}
-  //           />
-  //         )}
-
-  //         <TouchableOpacity style={styles.addBtn} onPress={addItem}>
-  //           <Text style={styles.addBtnText}>+</Text>
-  //         </TouchableOpacity>
-  //       </View>
-
-  //       {/* --- SEZIONE LISTA / CARICAMENTO --- */}
-  //     {loading ? (
-  //       <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 40 }} />
-  //     ) : (
-  //       <FlatList
-  //         data={items}
-  //         keyExtractor={(item) => item.id}
-  //         renderItem={renderItem}
-  //         ListEmptyComponent={
-  //           <Text style={styles.emptyText}>
-  //             Nessuna scadenza presente.
-  //           </Text>
-  //         }
-  //       />
-  //     )}
-  //     </SafeAreaView>
-  //   </SafeAreaProvider>
-  // );
-
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -500,19 +324,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
     color: '#000',
   },
-  inputDate: {
-    width: 120, // Allargato per contenere la data formattata
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    height: 48,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    marginRight: 8,
-    textAlign: 'center',
-    color: '#000',
-  },
   addBtn: {
     backgroundColor: '#007AFF',
     width: 48,
@@ -525,9 +336,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 24,
     fontWeight: 'bold',
-  },
-  listContainer: {
-    paddingBottom: 24,
   },
   card: {
     backgroundColor: '#FFF',
@@ -580,9 +388,6 @@ const styles = StyleSheet.create({
     marginTop: 30,
     fontSize: 15,
   },
-
-
-
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -604,8 +409,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-
-
-
-
 });
