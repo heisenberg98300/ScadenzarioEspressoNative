@@ -8,3 +8,11 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+-keep class io.supabase.** { *; }
+-keep class com.supabase.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn io.supabase.**
+-keep class org.apache.http.** { *; }
+-dontwarn org.apache.http.**
