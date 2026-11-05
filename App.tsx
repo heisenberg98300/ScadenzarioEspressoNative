@@ -107,27 +107,19 @@ export default function App() {
 // };
 
   const loadItems = async () => {
-    setLoading(true);
-    try {
-      console.log('Avvio fetch di test...');
-      const response = await fetch('https://fldrcsyvvdkawdvhsiqb.supabase.co/rest/v1/scadenze?select=*', {
-        method: 'GET',
-        headers: {
-          'apikey': 'sb_publishable_LtXa3VE1s305Rk8Shv5S0g_JGne27MZ',
-          'Authorization': 'Bearer sb_publishable_LtXa3VE1s305Rk8Shv5S0g_JGne27MZ',
-        },
-      });
-
-      const result = await response.json();
-      console.log('Risposta fetch di test:', result);
-      Alert.alert('Successo!', 'Dati ricevuti: ' + JSON.stringify(result.length));
-    } catch (e: any) {
-      console.log('Errore fetch di test:', e);
-      Alert.alert('Errore Fetch', e.message);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const { data, error } = await supabase.from('scadenze').select('*');
+    if (error) throw error;
+    if (data) {
+      setItems(data); // Aggiorna la lista nell'interfaccia
     }
-  };
+  } catch (e: any) {
+    Alert.alert('Errore', e.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const saveItems = async (data: ExpiryItem[]) => {
     try {
