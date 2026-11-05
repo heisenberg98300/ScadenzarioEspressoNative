@@ -1,3 +1,5 @@
+
+import 'react-native-url-polyfill/auto'; // <-- QUESTO EVITA IL CRASH
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
