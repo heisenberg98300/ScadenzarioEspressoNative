@@ -117,6 +117,39 @@ export default function App() {
   
 
 
+//   const addItem = async () => {
+//   if (!title.trim()) {
+//     Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
+//     return;
+//   }
+
+//   const newId = Date.now().toString();
+//   const formattedDate = dayjs(date).format('YYYY-MM-DD');
+
+//   const newItem: ExpiryItem = {
+//     id: newId,
+//     title: title.trim(),
+//     expiryDate: formattedDate,
+//   };
+
+//   // Inserimento nel database Supabase
+//   const { error } = await supabase.from('scadenze').insert([
+//     {
+//       id: newId,
+//       title: newItem.title,
+//       expiry_date: newItem.expiryDate,
+//     },
+//   ]);
+
+//   if (error) {
+//     Alert.alert('Errore', 'Impossibile salvare online: ' + error.message);
+//     return;
+//   }
+
+//   setItems([...items, newItem]);
+//   setTitle('');
+// };
+
   const addItem = async () => {
   if (!title.trim()) {
     Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
@@ -133,7 +166,8 @@ export default function App() {
   };
 
   // Inserimento nel database Supabase
-  const { error } = await supabase.from('scadenze').insert([
+  console.log('Tentativo di connessione a Supabase in corso...');
+  const { data, error } = await supabase.from('scadenze').insert([
     {
       id: newId,
       title: newItem.title,
@@ -142,15 +176,15 @@ export default function App() {
   ]);
 
   if (error) {
-    Alert.alert('Errore', 'Impossibile salvare online: ' + error.message);
+    console.log('ERRORE DETTAGLIATO SUPABASE:', JSON.stringify(error, null, 2));
+    Alert.alert('Errore Tecnico', `Codice: ${error.code}\nMessaggio: ${error.message}\nDettagli: ${error.details}`);
     return;
   }
 
+  console.log('Inserito con successo!', data);
   setItems([...items, newItem]);
   setTitle('');
 };
-
-  
 
 
   const removeItem = async (id: string) => {
