@@ -1,5 +1,4 @@
-
-import 'react-native-url-polyfill/auto'; // <-- QUESTO EVITA IL CRASH
+import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -12,5 +11,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+  },
+  global: {
+    headers: {
+      'x-client-info': 'scadenzario-espresso-react-native',
+    },
   },
 });
