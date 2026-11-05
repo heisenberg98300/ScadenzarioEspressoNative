@@ -13,6 +13,8 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
 import { calcolaGiorniMancanti } from './utils/dateUtils';
+import { Colors }from './utils/theme';
+import ThemeToggleButton from './components/ThemeToggleButton';
 
 // Definizione del tipo per gli elementi della lista
 type ExpiryItem = {
@@ -24,8 +26,8 @@ type ExpiryItem = {
 export default function App() {
   const [items, setItems] = useState<ExpiryItem[]>([]);
   const [title, setTitle] = useState<string>('');
-  //const [days, setDays] = useState<string>('7');
-
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const theme = isDarkMode ? Colors.dark : Colors.light;
   // Sostituito 'days' con la data precompilata a oggi (o vuota) nel formato AAAA-MM-DD
   const [expiryDateInput, setExpiryDateInput] = useState<string>(
     dayjs().format('YYYY-MM-DD')
@@ -59,24 +61,7 @@ export default function App() {
     }
   };
 
-  // const addItem = () => {
-  //   if (!title.trim()) {
-  //     Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
-  //     return;
-  //   }
-
-  //   const numDays = parseInt(expiryDateInput, 10) || 0;
-  //   const calculatedDate = dayjs().add(numDays, 'day').format('YYYY-MM-DD');
-
-  //   const newItem: ExpiryItem = {
-  //     id: Date.now().toString(),
-  //     title: title.trim(),
-  //     expiryDate: calculatedDate,
-  //   };
-
-  //   setItems([...items, newItem]);
-  //   setTitle('');
-  // };
+  
 
 
   const addItem = () => {
@@ -99,25 +84,7 @@ export default function App() {
     setTitle('');
   };
 
-  // const removeItem = (id: string) => {
-  //   const updated = items.filter((item) => item.id !== id);
-  //   setItems(updated);
-  // };
-
-  // const renderItem = ({ item }: { item: ExpiryItem }) => {
-  //   const today = dayjs().startOf('day');
-  //   const expiry = dayjs(item.expiryDate).startOf('day');
-  //   const diffDays = expiry.diff(today, 'day');
-
-  //   let badgeColor = '#4CAF50';
-  //   let statusText = `Scade tra ${diffDays} gg`;
-
-  //   if (diffDays < 0) {
-  //     badgeColor = '#F44336';
-  //     statusText = 'SCADUTO!';
-  //   } else if (diffDays <= 3) {
-  //     badgeColor = '#FF9800';
-  //   }
+  
 
 
   const removeItem = (id: string) => {
@@ -142,19 +109,17 @@ export default function App() {
     const statusText = calcolaGiorniMancanti(item.expiryDate);
     
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
         <View style={styles.cardInfo}>
-          <Text style={styles.itemTitle}>{item.title}</Text>
-          <Text style={styles.itemDate}>Data: {item.expiryDate}</Text>
+          <Text style={[styles.itemTitle, { color: theme.textMain }]}>{item.title}</Text>
+          <Text style={[styles.itemDate, { color: theme.textSecondary }]}>Data: {item.expiryDate}</Text>
         </View>
 
         <View style={[styles.badge, { backgroundColor: badgeColor }]}>
           <Text style={styles.badgeText}>{statusText}</Text>
         </View>
 
-        <TouchableOpacity
-          onPress={() => removeItem(item.id)}
-          style={styles.deleteBtn}>
+        <TouchableOpacity onPress={() => removeItem(item.id)} style={styles.deleteBtn}>
           <Text style={styles.deleteBtnText}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -163,29 +128,35 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        {/* <Text style={styles.headerTitle}>☕ Scadenzario Espresso</Text> */}
+      {/* 3. Applichiamo lo sfondo dinamico del tema */}
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        
+        {/* Header con titolo, icona e il pulsante per il cambio tema */}
         <View style={styles.headerContainer}>
-        <Image 
-          source={require('./assets/icon.png')} // Sostituisci con il percorso corretto della tua immagine
-          style={styles.headerIcon} 
-        />
-        <Text style={styles.headerTitle}>Scadenzario Espresso</Text>
-      </View>
+          <View style={styles.titleContainer}>
+            <Image source={require('./assets/icon.png')} style={styles.headerIcon} />
+            <Text style={[styles.headerTitle, { color: theme.textMain }]}>Scadenzario Espresso</Text>
+          </View>
+
+          {/* Qui inserisci il componente del pulsante */}
+          <ThemeToggleButton
+            isDarkMode={isDarkMode}
+            onToggle={() => setIsDarkMode(!isDarkMode)}
+          />
+        </View>
 
         <View style={styles.inputContainer}>
           <TextInput
-            style={styles.inputTitle}
+            style={[styles.inputTitle, { backgroundColor: theme.cardBackground, color: theme.textMain, borderColor: theme.inputBorder }]}
             placeholder="Nome prodotto (es. Latte)"
-            placeholderTextColor="#888"
+            placeholderTextColor={isDarkMode ? '#888' : '#aaa'}
             value={title}
             onChangeText={setTitle}
           />
-          {/* Input allargato per inserire la data esatta AAAA-MM-DD */}
           <TextInput
-            style={styles.inputDate}
+            style={[styles.inputDate, { backgroundColor: theme.cardBackground, color: theme.textMain, borderColor: theme.inputBorder }]}
             placeholder="AAAA-MM-DD"
-            placeholderTextColor="#888"
+            placeholderTextColor={isDarkMode ? '#888' : '#aaa'}
             value={expiryDateInput}
             onChangeText={setExpiryDateInput}
           />
@@ -200,7 +171,7 @@ export default function App() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>Nessuna scadenza inserita.</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Nessuna scadenza inserita.</Text>
           }
         />
       </SafeAreaView>
@@ -214,13 +185,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F7',
     paddingHorizontal: 16,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 16,
-    color: '#333',
-  },
+  // headerTitle: {
+  //   fontSize: 24,
+  //   fontWeight: 'bold',
+  //   textAlign: 'center',
+  //   marginVertical: 16,
+  //   color: '#333',
+  // },
   inputContainer: {
     flexDirection: 'row',
     marginBottom: 16,
@@ -323,8 +294,12 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     marginVertical: 16,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerIcon: {
     width: 28,
