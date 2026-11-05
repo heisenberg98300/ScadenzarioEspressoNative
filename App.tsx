@@ -28,6 +28,10 @@ type ExpiryItem = {
 };
 
 export default function App() {
+
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [usernameInput, setUsernameInput] = useState<string>('');
+
   const [items, setItems] = useState<ExpiryItem[]>([]);
   const [title, setTitle] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -50,6 +54,44 @@ export default function App() {
     saveItems(items);
   }, [items]);
 
+
+
+  useEffect(() => {
+  loadUserPreference();
+  loadThemePreference();
+}, []);
+
+const loadUserPreference = async () => {
+  try {
+    const savedUser = await AsyncStorage.getItem('@current_user');
+    if (savedUser) {
+      setCurrentUser(savedUser);
+      loadItems(savedUser);
+    } else {
+      setLoading(false);
+    }
+  } catch (e) {
+    console.log('Errore caricamento utente', e);
+    setLoading(false);
+  }
+};
+
+const handleLogin = async () => {
+  if (!usernameInput.trim()) {
+    Alert.alert('Attenzione', 'Inserisci un nome utente valido');
+    return;
+  }
+  const user = usernameInput.trim();
+  setCurrentUser(user);
+  await AsyncStorage.setItem('@current_user', user);
+  loadItems(user);
+};
+
+const handleLogout = async () => {
+  setCurrentUser(null);
+  setItems([]);
+  await AsyncStorage.removeItem('@current_user');
+};
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
   setShowDatePicker(false); // Chiude sempre il selettore
@@ -81,38 +123,43 @@ export default function App() {
     }
   };
 
+
+
 //   const loadItems = async () => {
 //   setLoading(true);
 //   try {
-//     const { data, error } = await supabase
-//       .from('scadenze')
-//       .select('*')
-//       .order('expiry_date', { ascending: true });
-
-//     if (error) {
-//       console.log('Errore caricamento da Supabase:', error.message);
-//     } else if (data) {
-//       const formattedData = data.map((item: any) => ({
-//         id: item.id,
-//         title: item.title,
-//         expiryDate: item.expiry_date,
-//       }));
-//       setItems(formattedData);
+//     const { data, error } = await supabase.from('scadenze').select('*');
+//     if (error) throw error;
+//     if (data) {
+//       setItems(data); // Aggiorna la lista nell'interfaccia
 //     }
-//   } catch (e) {
-//     console.log('Errore di connessione', e);
+//   } catch (e: any) {
+//     Alert.alert('Errore', e.message);
 //   } finally {
-//     setLoading(false); // Disattiva il caricamento in ogni caso
+//     setLoading(false);
 //   }
 // };
 
-  const loadItems = async () => {
+
+const loadItems = async (user: string) => {
   setLoading(true);
   try {
-    const { data, error } = await supabase.from('scadenze').select('*');
+    const { data, error } = await supabase
+      .from('scadenze')
+      .select('*')
+      .eq('id_utente', user) // Filtra per utente
+      .order('expiry_date', { ascending: true });
+
     if (error) throw error;
+    
     if (data) {
-      setItems(data); // Aggiorna la lista nell'interfaccia
+      const formattedData = data.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        expiry_date: item.expiry_date,
+        id_utente: item.id_utente,
+      }));
+      setItems(formattedData);
     }
   } catch (e: any) {
     Alert.alert('Errore', e.message);
@@ -120,7 +167,6 @@ export default function App() {
     setLoading(false);
   }
 };
-
   const saveItems = async (data: ExpiryItem[]) => {
     try {
       await AsyncStorage.setItem('@scadenze_list', JSON.stringify(data));
@@ -130,6 +176,7 @@ export default function App() {
   };
 
   
+
 
 
 //   const addItem = async () => {
@@ -144,23 +191,26 @@ export default function App() {
 //   const newItem: ExpiryItem = {
 //     id: newId,
 //     title: title.trim(),
-//     expiryDate: formattedDate,
+//     expiry_date: formattedDate,
 //   };
 
 //   // Inserimento nel database Supabase
-//   const { error } = await supabase.from('scadenze').insert([
+//   console.log('Tentativo di connessione a Supabase in corso...');
+//   const { data, error } = await supabase.from('scadenze').insert([
 //     {
 //       id: newId,
 //       title: newItem.title,
-//       expiry_date: newItem.expiryDate,
+//       expiry_date: newItem.expiry_date,
 //     },
 //   ]);
 
 //   if (error) {
-//     Alert.alert('Errore', 'Impossibile salvare online: ' + error.message);
+//     console.log('ERRORE DETTAGLIATO SUPABASE:', JSON.stringify(error, null, 2));
+//     Alert.alert('Errore Tecnico', `Codice: ${error.code}\nMessaggio: ${error.message}\nDettagli: ${error.details}`);
 //     return;
 //   }
 
+//   console.log('Inserito con successo!', data);
 //   setItems([...items, newItem]);
 //   setTitle('');
 // };
@@ -170,6 +220,7 @@ export default function App() {
     Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
     return;
   }
+  if (!currentUser) return;
 
   const newId = Date.now().toString();
   const formattedDate = dayjs(date).format('YYYY-MM-DD');
@@ -180,27 +231,23 @@ export default function App() {
     expiry_date: formattedDate,
   };
 
-  // Inserimento nel database Supabase
-  console.log('Tentativo di connessione a Supabase in corso...');
-  const { data, error } = await supabase.from('scadenze').insert([
+  const { error } = await supabase.from('scadenze').insert([
     {
       id: newId,
       title: newItem.title,
       expiry_date: newItem.expiry_date,
+      id_utente: currentUser, // Associa all'utente loggato
     },
   ]);
 
   if (error) {
-    console.log('ERRORE DETTAGLIATO SUPABASE:', JSON.stringify(error, null, 2));
-    Alert.alert('Errore Tecnico', `Codice: ${error.code}\nMessaggio: ${error.message}\nDettagli: ${error.details}`);
+    Alert.alert('Errore', 'Impossibile salvare online: ' + error.message);
     return;
   }
 
-  console.log('Inserito con successo!', data);
   setItems([...items, newItem]);
   setTitle('');
 };
-
 
   const removeItem = async (id: string) => {
   const { error } = await supabase
@@ -251,22 +298,50 @@ export default function App() {
     );
   };
 
+
+
+  // Se l'utente non ha inserito il nome, mostra la schermata di login
+  if (!currentUser) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={[styles.headerTitle, { color: theme.textMain, marginBottom: 20 }]}>Scadenzario Espresso</Text>
+          <Text style={{ color: theme.textSecondary, marginBottom: 10 }}>Inserisci il tuo nome per accedere:</Text>
+          <TextInput
+            style={[styles.inputTitle, { width: '80%', marginBottom: 16, backgroundColor: theme.cardBackground, color: theme.textMain, borderColor: theme.inputBorder }]}
+            placeholder="Il tuo nome..."
+            placeholderTextColor="#888"
+            value={usernameInput}
+            onChangeText={setUsernameInput}
+          />
+          <TouchableOpacity style={[styles.addBtn, { width: '80%', height: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }]} onPress={handleLogin}>
+            <Text style={styles.addBtnText}>Accedi</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Schermata principale (Dashboard con utente loggato)
   return (
     <SafeAreaProvider>
-      {/* 3. Applichiamo lo sfondo dinamico del tema */}
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         
-        {/* Header con titolo, icona e il pulsante per il cambio tema */}
+        {/* Nuovo Header con info utente e tasto cambia */}
         <View style={styles.headerContainer}>
           <View style={styles.titleContainer}>
             <Image source={require('./assets/icon.png')} style={styles.headerIcon} />
-            <Text style={[styles.headerTitle, { color: theme.textMain }]}>Scadenzario Espresso</Text>
+            <View>
+              <Text style={[styles.headerTitle, { color: theme.textMain }]}>Scadenzario</Text>
+              <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                Utente: {currentUser} (<Text style={{color: '#007AFF'}} onPress={handleLogout}>cambia</Text>)
+              </Text>
+            </View>
           </View>
 
-          
           <ThemeToggleButton
             isDarkMode={isDarkMode}
-            onToggle={() => toggleTheme(!isDarkMode)} // Inverte lo stato e lo salva
+            onToggle={() => toggleTheme(!isDarkMode)}
           />
         </View>
 
@@ -279,7 +354,6 @@ export default function App() {
             onChangeText={setTitle}
           />
           
-          {/* Pulsante che apre il calendario al posto del TextInput */}
           <TouchableOpacity 
             style={[styles.datePickerBtn, { backgroundColor: theme.cardBackground, borderColor: theme.inputBorder }]}
             onPress={() => setShowDatePicker(true)}
@@ -289,7 +363,6 @@ export default function App() {
             </Text>
           </TouchableOpacity>
 
-          {/* Componente del calendario nativo a comparsa */}
           {showDatePicker && (
             <DateTimePicker
               value={date}
@@ -304,25 +377,97 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        {/* --- SEZIONE LISTA / CARICAMENTO --- */}
-      {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 40 }} />
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              Nessuna scadenza presente.
-            </Text>
-          }
-        />
-      )}
+        {loading ? (
+          <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 40 }} />
+        ) : (
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>
+                Nessuna scadenza presente.
+              </Text>
+            }
+          />
+        )}
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
+
+  // return (
+  //   <SafeAreaProvider>
+  //     {/* 3. Applichiamo lo sfondo dinamico del tema */}
+  //     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        
+  //       {/* Header con titolo, icona e il pulsante per il cambio tema */}
+  //       <View style={styles.headerContainer}>
+  //         <View style={styles.titleContainer}>
+  //           <Image source={require('./assets/icon.png')} style={styles.headerIcon} />
+  //           <Text style={[styles.headerTitle, { color: theme.textMain }]}>Scadenzario Espresso</Text>
+  //         </View>
+
+          
+  //         <ThemeToggleButton
+  //           isDarkMode={isDarkMode}
+  //           onToggle={() => toggleTheme(!isDarkMode)} // Inverte lo stato e lo salva
+  //         />
+  //       </View>
+
+  //       <View style={styles.inputContainer}>
+  //         <TextInput
+  //           style={[styles.inputTitle, { backgroundColor: theme.cardBackground, color: theme.textMain, borderColor: theme.inputBorder }]}
+  //           placeholder="Nome prodotto (es. Latte)"
+  //           placeholderTextColor={isDarkMode ? '#888' : '#aaa'}
+  //           value={title}
+  //           onChangeText={setTitle}
+  //         />
+          
+  //         {/* Pulsante che apre il calendario al posto del TextInput */}
+  //         <TouchableOpacity 
+  //           style={[styles.datePickerBtn, { backgroundColor: theme.cardBackground, borderColor: theme.inputBorder }]}
+  //           onPress={() => setShowDatePicker(true)}
+  //         >
+  //           <Text style={{ color: theme.textMain }}>
+  //             {dayjs(date).format('YYYY-MM-DD')}
+  //           </Text>
+  //         </TouchableOpacity>
+
+  //         {/* Componente del calendario nativo a comparsa */}
+  //         {showDatePicker && (
+  //           <DateTimePicker
+  //             value={date}
+  //             mode="date"
+  //             display="default"
+  //             onChange={onChangeDate}
+  //           />
+  //         )}
+
+  //         <TouchableOpacity style={styles.addBtn} onPress={addItem}>
+  //           <Text style={styles.addBtnText}>+</Text>
+  //         </TouchableOpacity>
+  //       </View>
+
+  //       {/* --- SEZIONE LISTA / CARICAMENTO --- */}
+  //     {loading ? (
+  //       <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 40 }} />
+  //     ) : (
+  //       <FlatList
+  //         data={items}
+  //         keyExtractor={(item) => item.id}
+  //         renderItem={renderItem}
+  //         ListEmptyComponent={
+  //           <Text style={styles.emptyText}>
+  //             Nessuna scadenza presente.
+  //           </Text>
+  //         }
+  //       />
+  //     )}
+  //     </SafeAreaView>
+  //   </SafeAreaProvider>
+  // );
+
 
 const styles = StyleSheet.create({
   container: {
