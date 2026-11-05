@@ -29,9 +29,11 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const theme = isDarkMode ? Colors.dark : Colors.light;
   // Sostituito 'days' con la data precompilata a oggi (o vuota) nel formato AAAA-MM-DD
-  const [expiryDateInput, setExpiryDateInput] = useState<string>(
-    dayjs().format('YYYY-MM-DD')
-  );
+  // const [expiryDateInput, setExpiryDateInput] = useState<string>(
+  //   dayjs().format('YYYY-MM-DD')
+  // );
+  const [date, setDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
 
 
   useEffect(() => {
@@ -42,6 +44,15 @@ export default function App() {
   useEffect(() => {
     saveItems(items);
   }, [items]);
+
+
+  const onChangeDate = (event: any, selectedDate?: Date) => {
+  setShowDatePicker(false); // Chiude il calendario dopo la scelta
+  if (selectedDate) {
+    setDate(selectedDate);
+  }
+};
+
 
 
   const toggleTheme = async (value: boolean) => {
@@ -91,7 +102,7 @@ export default function App() {
       Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
       return;
     }
-    if (!expiryDateInput.trim()) {
+    if (!date) {
       Alert.alert('Attenzione', 'Inserisci una data di scadenza valida');
       return;
     }
@@ -99,7 +110,7 @@ export default function App() {
     const newItem: ExpiryItem = {
       id: Date.now().toString(),
       title: title.trim(),
-      expiryDate: expiryDateInput.trim(), // Salviamo direttamente la data inserita
+      expiryDate: dayjs(date).format('YYYY-MM-DD')
     };
 
     setItems([...items, newItem]);
@@ -175,13 +186,27 @@ export default function App() {
             value={title}
             onChangeText={setTitle}
           />
-          <TextInput
-            style={[styles.inputDate, { backgroundColor: theme.cardBackground, color: theme.textMain, borderColor: theme.inputBorder }]}
-            placeholder="AAAA-MM-DD"
-            placeholderTextColor={isDarkMode ? '#888' : '#aaa'}
-            value={expiryDateInput}
-            onChangeText={setExpiryDateInput}
-          />
+          
+          {/* Pulsante che apre il calendario al posto del TextInput */}
+          <TouchableOpacity 
+            style={[styles.datePickerBtn, { backgroundColor: theme.cardBackground, borderColor: theme.inputBorder }]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={{ color: theme.textMain }}>
+              {dayjs(date).format('YYYY-MM-DD')}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Componente del calendario nativo a comparsa */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              onChange={onChangeDate}
+            />
+          )}
+
           <TouchableOpacity style={styles.addBtn} onPress={addItem}>
             <Text style={styles.addBtnText}>+</Text>
           </TouchableOpacity>
@@ -207,13 +232,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F7',
     paddingHorizontal: 16,
   },
-  // headerTitle: {
-  //   fontSize: 24,
-  //   fontWeight: 'bold',
-  //   textAlign: 'center',
-  //   marginVertical: 16,
-  //   color: '#333',
-  // },
+  datePickerBtn: {
+    width: 130,
+    borderRadius: 8,
+    height: 48,
+    borderWidth: 1,
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   inputContainer: {
     flexDirection: 'row',
     marginBottom: 16,
