@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,6 +17,7 @@ import { calcolaGiorniMancanti } from './utils/dateUtils';
 import { Colors }from './utils/theme';
 import ThemeToggleButton from './components/ThemeToggleButton';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { supabase } from './utils/supabase';
 
 // Definizione del tipo per gli elementi della lista
 type ExpiryItem = {
@@ -35,6 +37,7 @@ export default function App() {
   // );
   const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
 
   useEffect(() => {
@@ -78,15 +81,29 @@ export default function App() {
   };
 
   const loadItems = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('@scadenze_list');
-      if (stored) {
-        setItems(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.log('Errore caricamento dati', e);
+  setLoading(true);
+  try {
+    const { data, error } = await supabase
+      .from('scadenze')
+      .select('*')
+      .order('expiry_date', { ascending: true });
+
+    if (error) {
+      console.log('Errore caricamento da Supabase:', error.message);
+    } else if (data) {
+      const formattedData = data.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        expiryDate: item.expiry_date,
+      }));
+      setItems(formattedData);
     }
-  };
+  } catch (e) {
+    console.log('Errore di connessione', e);
+  } finally {
+    setLoading(false); // Disattiva il caricamento in ogni caso
+  }
+};
 
   const saveItems = async (data: ExpiryItem[]) => {
     try {
@@ -99,33 +116,56 @@ export default function App() {
   
 
 
-  const addItem = () => {
-    if (!title.trim()) {
-      Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
-      return;
-    }
-    if (!date) {
-      Alert.alert('Attenzione', 'Inserisci una data di scadenza valida');
-      return;
-    }
+  const addItem = async () => {
+  if (!title.trim()) {
+    Alert.alert('Attenzione', 'Inserisci un nome per il prodotto');
+    return;
+  }
 
-    const newItem: ExpiryItem = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      expiryDate: dayjs(date).format('YYYY-MM-DD')
-    };
+  const newId = Date.now().toString();
+  const formattedDate = dayjs(date).format('YYYY-MM-DD');
 
-    setItems([...items, newItem]);
-    setTitle('');
+  const newItem: ExpiryItem = {
+    id: newId,
+    title: title.trim(),
+    expiryDate: formattedDate,
   };
+
+  // Inserimento nel database Supabase
+  const { error } = await supabase.from('scadenze').insert([
+    {
+      id: newId,
+      title: newItem.title,
+      expiry_date: newItem.expiryDate,
+    },
+  ]);
+
+  if (error) {
+    Alert.alert('Errore', 'Impossibile salvare online: ' + error.message);
+    return;
+  }
+
+  setItems([...items, newItem]);
+  setTitle('');
+};
 
   
 
 
-  const removeItem = (id: string) => {
-    const updated = items.filter((item) => item.id !== id);
-    setItems(updated);
-  };
+  const removeItem = async (id: string) => {
+  const { error } = await supabase
+    .from('scadenze')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    Alert.alert('Errore', 'Impossibile eliminare dal cloud');
+    return;
+  }
+
+  const updated = items.filter((item) => item.id !== id);
+  setItems(updated);
+};
 
   const renderItem = ({ item }: { item: ExpiryItem }) => {
     const today = dayjs().startOf('day');
@@ -214,15 +254,21 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
+        {/* --- SEZIONE LISTA / CARICAMENTO --- */}
+      {loading ? (
+        <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 40 }} />
+      ) : (
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
           ListEmptyComponent={
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Nessuna scadenza inserita.</Text>
+            <Text style={styles.emptyText}>
+              Nessuna scadenza presente.
+            </Text>
           }
         />
+      )}
       </SafeAreaView>
     </SafeAreaProvider>
   );

@@ -13,6 +13,7 @@
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@react-native-community/datetimepicker": "^9.2.2",
     "@react-native/new-app-screen": "0.88.1",
+    "@supabase/supabase-js": "^2.119.0",
     "dayjs": "^1.11.23",
     "react": "19.3.0",
     "react-native": "0.88.1",
