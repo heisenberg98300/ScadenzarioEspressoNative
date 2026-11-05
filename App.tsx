@@ -36,11 +36,33 @@ export default function App() {
 
   useEffect(() => {
     loadItems();
+    loadThemePreference();
   }, []);
 
   useEffect(() => {
     saveItems(items);
   }, [items]);
+
+
+  const toggleTheme = async (value: boolean) => {
+    setIsDarkMode(value);
+    try {
+      await AsyncStorage.setItem('@theme_dark', JSON.stringify(value));
+    } catch (e) {
+      console.log('Errore salvataggio tema', e);
+    }
+  };
+
+  const loadThemePreference = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem('@theme_dark');
+      if (savedTheme !== null) {
+        setIsDarkMode(JSON.parse(savedTheme));
+      }
+    } catch (e) {
+      console.log('Errore caricamento tema', e);
+    }
+  };
 
   const loadItems = async () => {
     try {
@@ -138,10 +160,10 @@ export default function App() {
             <Text style={[styles.headerTitle, { color: theme.textMain }]}>Scadenzario Espresso</Text>
           </View>
 
-          {/* Qui inserisci il componente del pulsante */}
+          
           <ThemeToggleButton
             isDarkMode={isDarkMode}
-            onToggle={() => setIsDarkMode(!isDarkMode)}
+            onToggle={() => toggleTheme(!isDarkMode)} // Inverte lo stato e lo salva
           />
         </View>
 
