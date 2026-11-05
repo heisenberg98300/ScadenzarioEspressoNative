@@ -24,7 +24,7 @@ import { supabase } from './utils/supabase';
 type ExpiryItem = {
   id: string;
   title: string;
-  expirydate: string;
+  expiry_date: string;
 };
 
 export default function App() {
@@ -177,7 +177,7 @@ export default function App() {
   const newItem: ExpiryItem = {
     id: newId,
     title: title.trim(),
-    expirydate: formattedDate,
+    expiry_date: formattedDate,
   };
 
   // Inserimento nel database Supabase
@@ -186,7 +186,7 @@ export default function App() {
     {
       id: newId,
       title: newItem.title,
-      expiry_date: newItem.expirydate,
+      expiry_date: newItem.expiry_date,
     },
   ]);
 
@@ -219,7 +219,7 @@ export default function App() {
 
   const renderItem = ({ item }: { item: ExpiryItem }) => {
     const today = dayjs().startOf('day');
-    const expiry = dayjs(item.expirydate).startOf('day');
+    const expiry = dayjs(item.expiry_date).startOf('day');
     const diffDays = expiry.diff(today, 'day');
 
     // Gestione del colore del badge in base alla vicinanza della scadenza
@@ -231,13 +231,13 @@ export default function App() {
     }
 
     // Sfruttiamo la funzione esterna per il testo del badge
-    const statusText = calcolaGiorniMancanti(item.expirydate);
+    const statusText = calcolaGiorniMancanti(item.expiry_date);
     
     return (
       <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
         <View style={styles.cardInfo}>
           <Text style={[styles.itemTitle, { color: theme.textMain }]}>{item.title}</Text>
-          <Text style={[styles.itemDate, { color: theme.textSecondary }]}>Data: {item.expirydate}</Text>
+          <Text style={[styles.itemDate, { color: theme.textSecondary }]}>Data: {item.expiry_date}</Text>
         </View>
 
         <View style={[styles.badge, { backgroundColor: badgeColor }]}>
